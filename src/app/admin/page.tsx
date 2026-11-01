@@ -14,8 +14,8 @@ export default async function AdminPage() {
 
   try {
     orders = await prisma.order.findMany();
-    gmv = orders.reduce((acc, curr) => acc + curr.totalAmount, 0);
-    totalSaasFees = orders.reduce((acc, curr) => acc + curr.saasFee, 0);
+    gmv = orders.reduce((acc: number, curr: any) => acc + curr.totalAmount, 0);
+    totalSaasFees = orders.reduce((acc: number, curr: any) => acc + curr.saasFee, 0);
     totalOrders = orders.length;
     totalTicketsSold = await prisma.ticket.count();
 

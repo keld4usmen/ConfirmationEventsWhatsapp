@@ -56,7 +56,7 @@ export default async function EventsPage() {
             eventId={featuredEvent.id}
             eventTitle={featuredEvent.title}
             eventStartTime={featuredEvent.startTime.toISOString()}
-            eventSeats={featuredEvent.eventSeats.map((es) => ({
+            eventSeats={featuredEvent.eventSeats.map((es: any) => ({
               id: es.id,
               seatId: es.seatId,
               status: es.status as any,
@@ -74,7 +74,7 @@ export default async function EventsPage() {
       <div className="space-y-4 pt-4">
         <h2 className="text-lg font-bold text-white">All Scheduled Events</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {events.map((e) => (
+          {events.map((e: any) => (
             <div key={e.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col justify-between">
               {e.bannerUrl && (
                 <img src={e.bannerUrl} alt={e.title} className="w-full h-44 object-cover" />

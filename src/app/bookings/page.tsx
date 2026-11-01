@@ -31,7 +31,7 @@ export default async function BookingsPage() {
   return (
     <BookingsClient
       halls={halls}
-      bookings={bookings.map((b) => ({
+      bookings={bookings.map((b: any) => ({
         id: b.id,
         eventTitle: b.eventTitle,
         description: b.description,

@@ -44,7 +44,7 @@ export default async function StudioPage() {
     <SeatingStudio
       hallId={hall.id}
       hallName={hall.name}
-      initialSeats={hall.seats.map((s) => ({
+      initialSeats={hall.seats.map((s: any) => ({
         id: s.id,
         section: s.section,
         rowLabel: s.rowLabel,

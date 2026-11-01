@@ -29,7 +29,7 @@ export default async function MyTicketsPage() {
 
   return (
     <MyTicketsClient
-      tickets={tickets.map((t) => ({
+      tickets={tickets.map((t: any) => ({
         id: t.id,
         attendeeName: t.attendeeName,
         attendeeEmail: t.attendeeEmail,
