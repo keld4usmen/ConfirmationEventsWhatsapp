@@ -308,7 +308,7 @@ export async function cancelTicketAction(ticketId: string, reason: string) {
   if (diffDays < 7) {
     return {
       success: false,
-      error: `FR-5.1 Policy Cutoff: Self-service refunds are only permitted at least 7 days before event start date (event starts in ${Math.max(0, diffDays.toFixed(1))} days).`,
+      error: `FR-5.1 Policy Cutoff: Self-service refunds are only permitted at least 7 days before event start date (event starts in ${Math.max(0, diffDays).toFixed(1)} days).`,
     };
   }
 

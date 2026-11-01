@@ -12,7 +12,7 @@ interface SuperAdminProps {
     id: string;
     name: string;
     slug: string;
-    domain: string;
+    domain?: string | null;
     stripeAccountId?: string | null;
     _count: {
       events: number;
