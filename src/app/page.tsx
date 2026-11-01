@@ -15,16 +15,27 @@ import {
   Zap
 } from 'lucide-react';
 
-export default async function OverviewPage() {
-  const tenantsCount = await prisma.tenant.count();
-  const hallsCount = await prisma.hall.count();
-  const eventsCount = await prisma.event.count();
-  const ticketsCount = await prisma.ticket.count();
-  const totalOrders = await prisma.order.aggregate({
-    _sum: { totalAmount: true },
-  });
+export const dynamic = 'force-dynamic';
 
-  const gmv = totalOrders._sum.totalAmount || 0;
+export default async function OverviewPage() {
+  let tenantsCount = 0;
+  let hallsCount = 0;
+  let eventsCount = 0;
+  let ticketsCount = 0;
+  let gmv = 0;
+
+  try {
+    tenantsCount = await prisma.tenant.count();
+    hallsCount = await prisma.hall.count();
+    eventsCount = await prisma.event.count();
+    ticketsCount = await prisma.ticket.count();
+    const totalOrders = await prisma.order.aggregate({
+      _sum: { totalAmount: true },
+    });
+    gmv = totalOrders._sum.totalAmount || 0;
+  } catch (e) {
+    console.warn('Database initialization pending, using fallback counters:', e);
+  }
 
   return (
     <div className="space-y-8">

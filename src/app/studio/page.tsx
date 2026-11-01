@@ -1,28 +1,35 @@
 import { prisma } from '@/lib/prisma';
 import { SeatingStudio } from '@/components/SeatingStudio';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function StudioPage() {
-  let hall = await prisma.hall.findFirst({
-    include: {
-      seats: true,
-    },
-  });
+  let hall: any = null;
 
-  if (!hall) {
-    const tenant = await prisma.tenant.findFirst();
-    if (tenant) {
-      hall = await prisma.hall.create({
-        data: {
-          tenantId: tenant.id,
-          name: 'Grand Symphony Hall',
-          description: 'Acoustic main hall',
-          capacity: 40,
-        },
-        include: { seats: true },
-      });
+  try {
+    hall = await prisma.hall.findFirst({
+      include: {
+        seats: true,
+      },
+    });
+
+    if (!hall) {
+      const tenant = await prisma.tenant.findFirst();
+      if (tenant) {
+        hall = await prisma.hall.create({
+          data: {
+            tenantId: tenant.id,
+            name: 'Grand Symphony Hall',
+            description: 'Acoustic main hall',
+            capacity: 40,
+          },
+          include: { seats: true },
+        });
+      }
     }
+  } catch (e) {
+    console.warn('Database initialization pending in StudioPage:', e);
   }
 
   if (!hall) {

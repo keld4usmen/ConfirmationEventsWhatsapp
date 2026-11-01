@@ -1,24 +1,31 @@
 import { prisma } from '@/lib/prisma';
 import { MyTicketsClient } from '@/components/MyTicketsClient';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function MyTicketsPage() {
-  const tickets = await prisma.ticket.findMany({
-    include: {
-      eventSeat: {
-        include: {
-          seat: true,
-          event: {
-            include: {
-              tenant: { select: { name: true } },
+  let tickets: any[] = [];
+
+  try {
+    tickets = await prisma.ticket.findMany({
+      include: {
+        eventSeat: {
+          include: {
+            seat: true,
+            event: {
+              include: {
+                tenant: { select: { name: true } },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (e) {
+    console.warn('Database initialization pending in MyTicketsPage:', e);
+  }
 
   return (
     <MyTicketsClient

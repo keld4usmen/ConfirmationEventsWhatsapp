@@ -1,24 +1,32 @@
 import { prisma } from '@/lib/prisma';
 import { BookingsClient } from '@/components/BookingsClient';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function BookingsPage() {
-  const halls = await prisma.hall.findMany({
-    select: {
-      id: true,
-      name: true,
-      capacity: true,
-    },
-  });
+  let halls: any[] = [];
+  let bookings: any[] = [];
 
-  const bookings = await prisma.hallBooking.findMany({
-    include: {
-      hall: { select: { name: true } },
-      organizer: { select: { name: true, email: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    halls = await prisma.hall.findMany({
+      select: {
+        id: true,
+        name: true,
+        capacity: true,
+      },
+    });
+
+    bookings = await prisma.hallBooking.findMany({
+      include: {
+        hall: { select: { name: true } },
+        organizer: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch (e) {
+    console.warn('Database initialization pending in BookingsPage:', e);
+  }
 
   return (
     <BookingsClient

@@ -3,21 +3,28 @@ import { prisma } from '@/lib/prisma';
 import { SeatPickerCanvas } from '@/components/SeatPickerCanvas';
 import { Ticket, Calendar, MapPin, ArrowRight } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function EventsPage() {
-  const events = await prisma.event.findMany({
-    include: {
-      tenant: { select: { name: true } },
-      eventSeats: {
-        include: {
-          seat: true,
-          tier: true,
+  let events: any[] = [];
+
+  try {
+    events = await prisma.event.findMany({
+      include: {
+        tenant: { select: { name: true } },
+        eventSeats: {
+          include: {
+            seat: true,
+            tier: true,
+          },
         },
       },
-    },
-    orderBy: { startTime: 'asc' },
-  });
+      orderBy: { startTime: 'asc' },
+    });
+  } catch (e) {
+    console.warn('Database initialization pending in EventsPage:', e);
+  }
 
   const featuredEvent = events[0];
 
