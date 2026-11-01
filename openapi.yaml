@@ -1,0 +1,177 @@
+openapi: 3.1.0
+info:
+  title: Multi-Tenant Event Center Management & Ticketing SaaS API
+  description: OpenAPI 3.1 Specification for multi-tenant venue management, interactive SVG seat picker, Stripe Connect splits, HMAC QR check-in, and 7-day ticket refunds.
+  version: 1.0.0
+servers:
+  - url: https://api.platform.com/v1
+    description: Production Multi-Tenant Wildcard API
+paths:
+  /api/bookings:
+    post:
+      summary: Submit Hall Reservation Request
+      description: FR-1.1 & FR-1.2 Organizers request hall booking. Database enforces temporal exclusion checks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hallId, tenantId, organizerId, eventTitle, startTime, endTime]
+              properties:
+                hallId: { type: string }
+                tenantId: { type: string }
+                organizerId: { type: string }
+                eventTitle: { type: string }
+                description: { type: string }
+                startTime: { type: string, format: date-time }
+                endTime: { type: string, format: date-time }
+                rentalFee: { type: number }
+      responses:
+        '200':
+          description: Booking request queued for venue admin review.
+        '409':
+          description: Temporal collision detected. Hall is reserved during requested window.
+
+  /api/bookings/{id}/approve:
+    post:
+      summary: Approve Hall Booking & Provision Event Draft
+      description: FR-1.4 Approving booking provisions linked Event draft and seat tiers.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Booking approved and event draft created.
+
+  /api/bookings/{id}/reject:
+    post:
+      summary: Reject Hall Booking Request
+      description: FR-1.3 Rejecting requires mandatory rejection reason.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejectionReason]
+              properties:
+                rejectionReason: { type: string }
+      responses:
+        '200':
+          description: Booking rejected and audit log recorded.
+
+  /api/seats/{id}/hold:
+    post:
+      summary: Execute 10-Minute Atomic Seat Hold
+      description: FR-3.2 Locks seat for 10 minutes mapped to session token.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId: { type: string }
+      responses:
+        '200':
+          description: Seat hold granted for 600 seconds.
+
+  /api/orders/checkout:
+    post:
+      summary: Finalize Checkout & Stripe Multi-Party Payout Split
+      description: FR-3.4 & FR-4.2 Converts HELD to SOLD and distributes platform fees, venue commission, and net organizer ticket revenue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventId, userId, sessionHoldIds, attendeeEmail, attendeeName]
+              properties:
+                eventId: { type: string }
+                userId: { type: string }
+                sessionHoldIds:
+                  type: array
+                  items: { type: string }
+                attendeeEmail: { type: string }
+                attendeeName: { type: string }
+      responses:
+        '200':
+          description: Order completed and cryptographic HMAC-SHA256 digital passes issued.
+
+  /api/tickets/{id}/cancel:
+    post:
+      summary: Self-Service Ticket Cancellation & Refund
+      description: FR-5.1 - FR-5.3 Self-service refund policy enforced (>= 7 days prior to event start) with mandatory text reason.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: Ticket cancelled, Stripe refund issued, and seat returned to AVAILABLE.
+
+  /api/tickets/{id}/transfer:
+    post:
+      summary: Secure Ticket Transfer
+      description: FR-5.4 Re-assign pass, invalidate old HMAC secret, and issue new signed HMAC QR code.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [toEmail, toName]
+              properties:
+                toEmail: { type: string }
+                toName: { type: string }
+      responses:
+        '200':
+          description: Pass transferred to recipient.
+
+  /api/gate/scan:
+    post:
+      summary: Gate QR Web Check-in & HMAC Verification
+      description: FR-6.1 - FR-6.3 HMAC-SHA256 signature verification and duplicate check-in locking.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrToken, staffUserId]
+              properties:
+                qrToken: { type: string }
+                staffUserId: { type: string }
+      responses:
+        '200':
+          description: Validation result (VALID, ALREADY_CHECKED_IN, or FRAUD_ALERT).

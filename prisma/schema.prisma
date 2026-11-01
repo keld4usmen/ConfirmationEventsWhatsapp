@@ -1,0 +1,254 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PLATFORM_ADMIN
+  VENUE_OWNER
+  VENUE_MANAGER
+  VENUE_SCANNER
+  ORGANIZER
+  ATTENDEE
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  SOLD
+}
+
+enum TicketStatus {
+  ACTIVE
+  CHECKED_IN
+  CANCELLED
+  TRANSFERRED
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  name          String
+  role          Role         @default(ATTENDEE)
+  avatarUrl     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  memberships   Membership[]
+  hallBookings  HallBooking[]
+  orders        Order[]
+  checkedInTickets Ticket[]  @relation("CheckedInByStaff")
+}
+
+model Tenant {
+  id              String       @id @default(uuid())
+  name            String
+  slug            String       @unique
+  domain          String?      @unique
+  logoUrl         String?
+  stripeAccountId String?
+  createdAt       DateTime     @default(now())
+
+  memberships     Membership[]
+  halls           Hall[]
+  hallBookings    HallBooking[]
+  events          Event[]
+  orders          Order[]
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  role      Role
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+}
+
+model Hall {
+  id          String        @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  capacity    Int           @default(0)
+  createdAt   DateTime      @default(now())
+
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  seats       Seat[]
+  bookings    HallBooking[]
+}
+
+model Seat {
+  id          String      @id @default(uuid())
+  hallId      String
+  section     String      // e.g. "Main Floor", "VIP Balcony"
+  rowLabel    String      // e.g. "A", "B", "C"
+  seatNumber  Int         // e.g. 1, 2, 3
+  x           Float       // SVG Canvas spatial x coordinate
+  y           Float       // SVG Canvas spatial y coordinate
+  defaultTier String      @default("Regular") // "VIP", "Regular", "Accessible"
+  createdAt   DateTime    @default(now())
+
+  hall        Hall        @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  eventSeats  EventSeat[]
+}
+
+model HallBooking {
+  id              String        @id @default(uuid())
+  hallId          String
+  organizerId     String
+  tenantId        String
+  eventTitle      String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  rentalFee       Float
+  status          BookingStatus @default(PENDING)
+  rejectionReason String?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  createdAt       DateTime      @default(now())
+
+  hall            Hall          @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  organizer       User          @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event           Event?
+}
+
+model Event {
+  id            String       @id @default(uuid())
+  tenantId      String
+  hallBookingId String       @unique
+  title         String
+  description   String?
+  bannerUrl     String?
+  startTime     DateTime
+  endTime       DateTime
+  status        EventStatus  @default(DRAFT)
+  createdAt     DateTime     @default(now())
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  hallBooking   HallBooking  @relation(fields: [hallBookingId], references: [id], onDelete: Cascade)
+  ticketTiers   TicketTier[]
+  eventSeats    EventSeat[]
+  orders        Order[]
+}
+
+model TicketTier {
+  id          String      @id @default(uuid())
+  eventId     String
+  name        String      // "VIP", "Regular", "Accessible"
+  price       Float
+  color       String      @default("#3b82f6") // hex code for map display
+  createdAt   DateTime    @default(now())
+
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventSeats  EventSeat[]
+}
+
+model EventSeat {
+  id              String      @id @default(uuid())
+  eventId         String
+  seatId          String
+  tierId          String?
+  status          SeatStatus  @default(AVAILABLE)
+  holdExpiresAt   DateTime?
+  heldBySession   String?
+  price           Float       @default(0.0)
+  createdAt       DateTime    @default(now())
+
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seat            Seat        @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  tier            TicketTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  ticket          Ticket?
+
+  @@unique([eventId, seatId])
+}
+
+model Order {
+  id                    String      @id @default(uuid())
+  tenantId              String
+  userId                String
+  eventId               String
+  totalAmount           Float
+  saasFee               Float
+  venueFee              Float
+  organizerNet          Float
+  stripePaymentIntentId String?
+  status                OrderStatus @default(COMPLETED)
+  createdAt             DateTime    @default(now())
+
+  tenant                Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event                 Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets               Ticket[]
+}
+
+model Ticket {
+  id                 String              @id @default(uuid())
+  orderId            String
+  eventSeatId        String              @unique
+  attendeeName       String
+  attendeeEmail      String
+  qrCodeSecret       String              // Base64 HMAC-SHA256 token payload
+  status             TicketStatus        @default(ACTIVE)
+  checkedInAt        DateTime?
+  checkedInByUserId  String?
+  createdAt          DateTime            @default(now())
+
+  order              Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  eventSeat          EventSeat           @relation(fields: [eventSeatId], references: [id], onDelete: Cascade)
+  checkedInByStaff   User?               @relation("CheckedInByStaff", fields: [checkedInByUserId], references: [id], onDelete: SetNull)
+  cancellation       TicketCancellation?
+  transfers          TicketTransfer[]
+}
+
+model TicketCancellation {
+  id             String   @id @default(uuid())
+  ticketId       String   @unique
+  reason         String
+  refundAmount   Float
+  stripeRefundId String?
+  cancelledAt    DateTime @default(now())
+
+  ticket         Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TicketTransfer {
+  id            String   @id @default(uuid())
+  ticketId      String
+  fromEmail     String
+  toEmail       String
+  toName        String
+  oldSecret     String
+  newSecret     String
+  transferredAt DateTime @default(now())
+
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
